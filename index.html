@@ -2,13 +2,316 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>CUSTOM ELEMENT NAME</title>
+    <title>Item Selector</title>
+
+    <!-- Include jQuery library -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-ui-dist@1.12.1/jquery-ui.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/jquery-ui-dist@1.12.1/jquery-ui.min.css"
+    />
+
     <!-- Kontent Styling -->
     <link rel="stylesheet" href="custom-element.css" />
     <!-- Kentico Custom elements API-->
     <script src="https://app.kontent.ai/js-api/custom-element/v1/custom-element.min.js"></script>
+    <!-- Custom element CSS styles -->
+    <style>
+      /* We recommended you always set margin to zero to avoid problems when displaying the element in UI */
+      @import url("https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,700,400italic,700italic");
+      html {
+        font-family: sans-serif;
+        -ms-text-size-adjust: 100%;
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        overflow-y: hidden;
+        overflow-x: hidden;
+        margin: 10px;
+      }
+      .external-item {
+        background-color: #ffffff;
+        border: 2px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+        text-align: left;
+        width: 100%;
+        height: 44px;
+      }
+      .external-item.selected {
+        background-color: #f5f5f5;
+        margin-bottom: 10px;
+      }
+      .external-item .item-name {
+        width: 50%;
+        padding: 8px;
+        font-weight: bold;
+      }
+      .external-item .item-type {
+        padding: 8px;
+      }
+      .select-item {
+        width: calc(100vw - 20px);
+      }
+      .bar-item__action,
+      .bar-item__status-icon {
+        display: -webkit-box;
+        display: flex;
+        width: 40px;
+        height: 40px;
+        -webkit-box-align: center;
+        align-items: center;
+        justify-content: space-around;
+        color: #9e9e9e;
+        cursor: pointer;
+        -webkit-transition: all 0.15s cubic-bezier(0.23, 1, 0.32, 1) 0ms;
+        transition: all 0.15s cubic-bezier(0.23, 1, 0.32, 1) 0ms;
+      }
+      .bar-item__action--is-destructive:hover,
+      .bar-item__status-icon--is-destructive:hover {
+        color: #fff;
+        background-color: #ef5350;
+      }
+      li {
+        margin-top: 5px;
+      }
+      .external-item.selected:hover {
+        background-color: #e3f2fe;
+      }
+      .ui-autocomplete {
+        max-height: 300px;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+      .disabled_overlay {
+        position: fixed;
+        background-color: #777;
+        z-index: 10;
+        cursor: not-allowed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.1;
+      }
+    </style>
   </head>
   <body>
-    <!-- Custom element HTML -->
+    <div class="disabled_overlay"></div>
+    <div id="selectedItems"></div>
+    <div id="item-selector" class="item-selector">
+      <input
+        id="selectItem"
+        class="select-item"
+        placeholder="Search for an item here..."
+      />
+      <div id="item"></div>
+    </div>
+    <script>
+      var projectid = "";
+      var filter = "";
+      var items = [];
+      var selectedItems = [];
+
+      function updateDisabled(disabled) {
+        if (disabled) {
+          $(".disabled_overlay").show();
+        } else {
+          $(".disabled_overlay").hide();
+        }
+      }
+
+      function setup(value) {
+        var urlfindItems =
+          "https://deliver.kenticocloud.com/" +
+          projectid +
+          "/items?depth=0&elements=null";
+        if (filter) {
+          urlfindItems += "&" + filter;
+        }
+
+        $.ajax({
+          url: urlfindItems,
+          dataType: "text",
+          success: function(data) {
+            data = JSON.parse(data);
+            if (data.items.length > 0) {
+              processItems(data.items);
+              loadSelector(value);
+            } else {
+              showError(
+                "There are no items in specified project that would match the configuration."
+              );
+            }
+          }
+        });
+      }
+
+      function loadSelector(value) {
+        var storedItems = JSON.parse(value);
+        loadItems(storedItems);
+        $("#selectItem")
+          .autocomplete({
+            minLength: 1,
+            source: items,
+            focus: function(event, ui) {
+              return false;
+            },
+            select: function(event, ui) {
+              addItem(ui.item.value, ui.item.label, ui.item.lang, ui.item.type);
+              updateSize();
+              return false;
+            }
+          })
+          .autocomplete("instance")._renderItem = function(ul, item) {
+          return $("<li>")
+            .append(
+              "<div class='external-item'><div class='item-name'>" +
+                item.label +
+                "</div><div class='item-type'>" +
+                item.type +
+                "</div></div>"
+            )
+            .appendTo(ul);
+        };
+        updateSize();
+      }
+
+      function processItems(data) {
+        for (var i = 0; i < data.length; i++) {
+          items.push({
+            value: data[i].system.codename,
+            label: data[i].system.name,
+            lang: data[i].system.language,
+            type: data[i].system.type
+          });
+        }
+      }
+
+      function addItem(codename, name, lang, type) {
+        if (!checkItems(codename)) {
+          $("#selectedItems").append(
+            "<div class='external-item selected' id='" +
+              codename +
+              "'><div class='item-name' title='Item name'>" +
+              name +
+              "</div><div class='item-type' title='Content type'>" +
+              type +
+              "</div><div codename='" +
+              codename +
+              "' class='bar-item__action bar-item__action--is-destructive remove-item'><i aria-hidden='true' class='icon-remove'></i></div></div>"
+          );
+          $("#selectItem").val("");
+          $(".remove-iteme").off();
+          $(".remove-item").click(function(e) {
+            removeItem($(this).attr("codename"));
+          });
+          selectedItems.push({
+            codename: codename,
+            name: name,
+            language: lang,
+            type: type
+          });
+          CustomElement.setValue(JSON.stringify(selectedItems));
+        } else {
+          highlightItem(codename);
+        }
+      }
+
+      function removeItem(codename) {
+        for (var i = 0; i < selectedItems.length; i++) {
+          if (selectedItems[i].codename == codename) {
+            selectedItems.splice(i, 1);
+          }
+        }
+        CustomElement.setValue(JSON.stringify(selectedItems));
+        $("#" + codename).fadeOut(200);
+        updateSize();
+      }
+
+      function loadItems(storedItems) {
+        for (var i = 0; i < storedItems.length; i++) {
+          addItem(
+            storedItems[i].codename,
+            storedItems[i].name,
+            storedItems[i].language,
+            storedItems[i].type
+          );
+        }
+      }
+
+      function checkItems(codename) {
+        for (var i = 0; i < selectedItems.length; i++) {
+          if (selectedItems[i].codename == codename) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      function highlightItem(codename) {
+        $("#" + codename).effect("highlight", { color: "#e3f2fe" }, 2000);
+      }
+
+      function updateSize() {
+        var height = 500;
+        try {
+          height = parseInt($("html").height()) + 300;
+        } catch (err) {
+          console.error(err);
+        }
+        CustomElement.setHeight(height);
+      }
+
+      function initCustomElement() {
+        try {
+          CustomElement.init((element, _context) => {
+            // Setup with initial value and disabled state
+            var configError = false;
+            if (element.config) {
+              if (element.config.projectid)
+                projectid = element.config.projectid;
+              else {
+                configError = true;
+              }
+              if (element.config.filter) filter = element.config.filter;
+            } else {
+              configError = true;
+            }
+            if (!configError) {
+              if (element.value) {
+                setup(element.value);
+              } else {
+                setup("[]");
+              }
+            } else {
+              showError(
+                "Your configuration doesn't contain the projectid value. Please check the documentation of this element."
+              );
+            }
+
+            updateDisabled(element.disabled);
+            updateSize();
+          });
+          // React when the disabled state changes (e.g. when publishing the item)
+          CustomElement.onDisabledChanged(updateDisabled);
+        } catch (err) {
+          // Initialization with the Custom elements API failed
+          // (page displayed outside of the Kentico Cloud UI)
+          console.error(err);
+          updateDisabled(true);
+        }
+      }
+
+      initCustomElement();
+
+      function showError(message) {
+        $("#item-selector").html(
+          '<span class="item-status item-status--failed">' + message + "</span>"
+        );
+      }
+    </script>
   </body>
 </html>
