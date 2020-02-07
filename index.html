@@ -125,7 +125,7 @@
 
       function setup(value) {
         var urlfindItems =
-          "https://deliver.kenticocloud.com/" +
+          "https://deliver.kontent.ai/" +
           projectid +
           "/items?depth=0&elements=null";
         if (filter) {
@@ -299,7 +299,7 @@
           CustomElement.onDisabledChanged(updateDisabled);
         } catch (err) {
           // Initialization with the Custom elements API failed
-          // (page displayed outside of the Kentico Cloud UI)
+          // (page displayed outside of the Kentico Kontent UI)
           console.error(err);
           updateDisabled(true);
         }
