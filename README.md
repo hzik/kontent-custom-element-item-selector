@@ -1,4 +1,4 @@
-# Item Selector Custom Element for Kentico Kontent
+# Item Selector
 
 This is a [custom element](https://docs.kontent.ai/tutorials/develop-apps/integrate/integrating-your-own-content-editing-features) for [Kentico Kontent](https://kontent.ai) that allows you to select a content item from another Kontent project.
 
@@ -53,6 +53,3 @@ The value is saved as a string representing a JSON object. When deserialized, it
 ]
 ```
 
-## Contributors
-
-Originally contributed by [@hzik](https://github.com/hzik/)
