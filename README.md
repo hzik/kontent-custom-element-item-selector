@@ -48,7 +48,8 @@ The value is saved as a string representing a JSON object. When deserialized, it
   {
     "codename": "url1",
     "name": "url1",
-    "language": "en-US","type":"video_item__url_"
+    "language": "en-US",
+    "type":"video_item__url_"
   }
 ]
 ```
